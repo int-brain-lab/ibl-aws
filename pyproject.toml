@@ -9,6 +9,7 @@ dependencies = [
     "boto3",
     "python-dotenv",
     "paramiko",
+    "iblutil",
 ]
 
 requires-python = ">=3.10"

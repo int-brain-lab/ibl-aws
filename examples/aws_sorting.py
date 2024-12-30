@@ -1,68 +1,42 @@
 from pathlib import Path
 
-import os
-import boto3
-import time
-import paramiko
-import dotenv
-
+import iblutil.util
 import iblaws.utils
 # 98.84.125.97
 
+logger = iblutil.util.setup_logger('iblaws', level='INFO')
+
 # EC2 instance details
 INSTANCE_ID = 'i-05c9c8e9cca199cc7'
-security_group_id = 'sg-0ec7c3c71eba340dd'
-security_group_rule = 'sgr-03801255f4bb69acc'
+INSTANCE_REGION = 'us-east-1'
+PRIVATE_KEY_PATH = Path.home().joinpath('.ssh', 'spikesorting_rerun.pem')
+USERNAME = 'ubuntu'
+# security group that allows ONE to connect to Alyx
+security_group_id, security_group_rule = ('sg-0ec7c3c71eba340dd', 'sgr-03801255f4bb69acc')
+volume_id = 'vol-0a30864212c68a728'
 
+ec2 = iblaws.utils.get_boto3_client(service_name='ec2', region_name=INSTANCE_REGION)
 
-KEY_PAIR_PATH = Path.home().joinpath('.ssh', 'spikesorting_rerun.pem')
-USERNAME = 'ubuntu'  # This might be different based on your AMI
-
-
+iblaws.utils.ec2_start_instance(ec2, INSTANCE_ID)
 # %% setup the security group so ONE can communicate with the Alyx database
-ec2 = iblaws.utils.get_boto3_client(service_name='ec2', region_name='us-east-1')
-public_ip = iblaws.utils.get_public_ip(ec2, INSTANCE_ID)
+public_ip = iblaws.utils.ec2_get_public_ip(ec2, INSTANCE_ID)
+logger.info(f'Public IP: {public_ip}, ssh command: ssh -i {PRIVATE_KEY_PATH.as_posix()} {USERNAME}@{public_ip}')
 ec2_london = iblaws.utils.get_boto3_client(service_name='ec2', region_name='eu-west-2')
-iblaws.utils.update_security_group_rule(ec2_london, security_group_id='sg-0ec7c3c71eba340dd', security_group_rule=security_group_rule, new_ip=f"{public_ip}/32")
+iblaws.utils.ec2_update_security_group_rule(
+    ec2_london, security_group_id='sg-0ec7c3c71eba340dd', security_group_rule=security_group_rule, new_ip=f'{public_ip}/32'
+)
 
-# %%
-response = ec2.describe_instances(InstanceIds=[INSTANCE_ID])
-
-#
-# def start_instance():
-#     print("Starting EC2 instance...")
-#     ec2.start_instances(InstanceIds=[INSTANCE_ID])
-#     waiter = ec2.get_waiter('instance_running')
-#     waiter.wait(InstanceIds=[INSTANCE_ID])
-#     print("EC2 instance is now running")
-#
-#
-# def stop_instance():
-#     print("Stopping EC2 instance...")
-#     ec2.stop_instances(InstanceIds=[INSTANCE_ID])
-#     waiter = ec2.get_waiter('instance_stopped')
-#     waiter.wait(InstanceIds=[INSTANCE_ID])
-#     print("EC2 instance is now stopped")
-
-
-print("Connecting to instance and running script...")
-ssh = paramiko.SSHClient()
-ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
-# Wait for SSH to be available
-for i in range(3):  # Try for 5 minutes
-    try:
-        ssh.connect(public_ip, username=USERNAME, key_filename=str(KEY_PAIR_PATH))
-        break
-    except paramiko.ssh_exception.NoValidConnectionsError:
-        time.sleep(5)
-
-# Run your Python script
-
-stdin, stdout, stderr = ssh.exec_command('python3 /path/to/your/script.py')
-print(stdout.read().decode())
-print(stderr.read().decode())
-ssh.close()
-
+# %% get the SSH client
+ssh = iblaws.utils.ec2_get_ssh_client(public_ip, PRIVATE_KEY_PATH, username=USERNAME)
+# %% turn the instance on and mount the EBS volumes
+logger.info('Mounting EBS volume...')
+# the device name listed in the attachment of the EBS volume doesn't match the device name in the /dev/ directory
+# but the EBS volume_id is set as the SERIAL number in the device identification, findable using `lsblk -o +SERIAL`
+# source: https://docs.aws.amazon.com/ebs/latest/userguide/identify-nvme-ebs-device.html
+_, stdout, stderr = ssh.exec_command(f'lsblk -o +SERIAL | grep {volume_id.replace('-', '')}')
+device_name = f'/dev/{stdout.read().decode().strip().split()[0]}'
+logger.info(f'Device name: {device_name}')
+logger.info(f'sudo mount {device_name} /mnt/s0')
+_, stdout, stderr = ssh.exec_command(f'sudo mount {device_name} /mnt/s0')
 
 
