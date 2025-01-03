@@ -11,7 +11,7 @@ import paramiko
 _logger = logging.getLogger(__name__)
 
 
-def get_boto3_client(service_name='ec2', region_name=None):
+def get_service_client(service_name='ec2', region_name=None):
     dotenv.load_dotenv(dotenv_path=Path(iblaws.__file__).parents[2].joinpath('.env'))  # Load environment variables from .env file
     AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY')  # Ensure AWS credentials are loaded
     AWS_SECRET_KEY = os.getenv('AWS_SECRET_KEY')  # Ensure AWS credentials are loaded
