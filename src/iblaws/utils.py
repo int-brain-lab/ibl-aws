@@ -2,6 +2,7 @@ import logging
 import os
 from pathlib import Path
 import time
+from typing import Optional
 
 import boto3
 import dotenv
@@ -11,7 +12,7 @@ import paramiko
 _logger = logging.getLogger(__name__)
 
 
-def get_service_client(service_name='ec2', region_name=None):
+def get_service_client(service_name: str = 'ec2', region_name: Optional[str] = None):
     dotenv.load_dotenv(dotenv_path=Path(iblaws.__file__).parents[2].joinpath('.env'))  # Load environment variables from .env file
     AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY')  # Ensure AWS credentials are loaded
     AWS_SECRET_KEY = os.getenv('AWS_SECRET_KEY')  # Ensure AWS credentials are loaded
@@ -54,7 +55,9 @@ def ec2_update_security_group_rule(ec2_client, security_group_id, security_group
             }
         ],
     )
-    _logger.info(f'Security group rule {security_group_rule} in group {security_group_id} updated successfully with new IP {new_ip}.')
+    _logger.info(
+        f'Security group rule {security_group_rule} in group {security_group_id} updated successfully with new IP {new_ip}.'
+    )
 
 
 def ec2_get_ssh_client(host_ip, key_pair_path, username='ubuntu') -> paramiko.SSHClient:
@@ -75,6 +78,7 @@ def ec2_get_public_ip(ec2_client, instance_id):
     response = ec2_client.describe_instances(InstanceIds=[instance_id])
     return response['Reservations'][0]['Instances'][0]['PublicIpAddress']
 
+import botocore
 
 def ec2_start_instance(ec2_client, instance_id):
     # %% starts the instance if it is not already running

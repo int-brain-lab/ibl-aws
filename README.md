@@ -5,6 +5,21 @@ Utilities to run processing on AWS Cloud
     sudo docker compose exec spikesorter /bin/bash
     sudo docker compose exec spikesorter python /root/Documents/PYTHON/ibl-sorter/examples/run_ibl_recording.py 7ae3865a-d8f4-4b73-938e-ddaec33f8bc6 probe01 --cache_dir /mnt/s0 --scratch_dir /mnt/s0/scratch
 
+## Installation instructions
+Install ibl-aws in an environment of your choice:
+```shell
+cd ibl-aws
+pip install -e .
+```
+Copy the `template.env` file to `.env` and fill with your EC2 access keys
+
+You can make sure the credentials are correct by running the following command:
+```python
+import iblaws.utils
+ec2 = iblaws.utils.get_service_client(service_name='ec2')
+ec2.describe_instances()
+```
+
 
 ## Installing docker with Nvidia support from a blank EC2
 
