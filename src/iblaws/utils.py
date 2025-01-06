@@ -87,3 +87,25 @@ def ec2_start_instance(ec2_client, instance_id):
     waiter = ec2_client.get_waiter('instance_running')
     waiter.wait(InstanceIds=[instance_id])
     _logger.info(f'EC2 instance {instance_id} is now running')
+
+
+def ssm_list_running_commands(instance_id: str, region_name:str = 'us-west-2') -> list:
+    """
+    List the commands currently running on an EC2 instance.
+    :param instance_id: The ID of the EC2 instance.
+    :param region_name: The AWS region where the instance is located (default is 'us-west-2').
+    :return: A list of command IDs that are currently running.
+    """
+    ssm = boto3.client('ssm', region_name=region_name)
+
+    # Get a list of commands sent to the instance
+    commands = ssm.list_commands(InstanceId=instance_id)['Commands']
+
+    running_commands = []
+    for command in commands:
+        # Get the status of each command
+        status = ssm.list_command_invocations(CommandId=command['CommandId'], InstanceId=instance_id)['CommandInvocations'][0]['Status']
+        if status == 'InProgress':
+            running_commands.append(command['CommandId'])
+
+    return running_commands
