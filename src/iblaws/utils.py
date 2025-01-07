@@ -25,6 +25,33 @@ def get_service_client(service_name: str = 'ec2', region_name: Optional[str] = N
     )
 
 
+def ec2_create_security_group_rule(ec2_client, security_group_id: str, description: str, ip: str):
+    """
+    Adds an ingress rule to the specified security group.
+
+    Args:
+        ec2_client (boto3.client): EC2 client
+        security_group_id (str): ID of the security group
+        description (str): Description of the rule
+        ip (str): IP address range to authorize
+    """
+    ec2_client.authorize_security_group_ingress(
+        GroupId=security_group_id,
+        IpPermissions=[
+            {
+                'IpProtocol': 'tcp',
+                'FromPort': 443,
+                'ToPort': 443,
+                'IpRanges': [{
+                    'CidrIp': f'{ip}/32',
+                    'Description': description,
+                }],
+            },
+        ],
+    )
+    _logger.info(f'Security group rule added successfully with IP {ip} in group {security_group_id}.')
+
+
 def ec2_update_security_group_rule(ec2_client, security_group_id, security_group_rule, new_ip):
     # Describe the security group to get current rules
     response = ec2_client.describe_security_group_rules(
