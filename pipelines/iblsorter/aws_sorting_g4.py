@@ -4,11 +4,9 @@ import iblutil.util
 import iblaws.utils
 # 98.84.125.97
 
-PID = '442d6f32-f0dc-4f82-90e3-5eefb086797c'
 logger = iblutil.util.setup_logger('iblaws', level='INFO')
 
 # EC2 instance details
-INSTANCE_ID = 'i-05c9c8e9cca199cc7'
 INSTANCE_REGION = 'us-east-1'
 PRIVATE_KEY_PATH = Path.home().joinpath('.ssh', 'spikesorting_rerun.pem')
 USERNAME = 'ubuntu'
@@ -16,14 +14,12 @@ DEVICE_NAME = '/dev/sdf'
 
 # security group that allows ONE to connect to Alyx
 alyx_security_group_id, alyx_security_group_rule = ('sg-0ec7c3c71eba340dd', 'sgr-03801255f4bb69acc')
-volume_id = 'vol-0a30864212c68a728'  # $0.08/GB-month = $0.11 / TB / hour
 ami_id = 'ami-0aee4157817bb44f8'
 instance_type='g6.4xlarge'  #g4dn.4xlarge 1.204  g6.4xlarge 1.3232
 ec2 = iblaws.utils.get_service_client(service_name='ec2', region_name=INSTANCE_REGION)
 ssm = iblaws.utils.get_service_client(service_name='ssm', region_name=INSTANCE_REGION)
 
 
-# %%
 def start_and_prepare_instance(instance_id: str, volume_id: str = 'AWS') -> str:
     """
     Starts an EC2 instance and prepares it for running the spikesorting pipeline.
@@ -37,24 +33,24 @@ def start_and_prepare_instance(instance_id: str, volume_id: str = 'AWS') -> str:
     Returns:
         str: The public IP address of the started instance.
     """
-    # %% setup the security group so ONE can communicate with the Alyx database
+    # setup the security group so ONE can communicate with the Alyx database
     response = ec2.describe_instances(InstanceIds=[instance_id])
     instance_state = response['Reservations'][0]['Instances'][0]['State']['Name']
     if instance_state == 'running':
         raise ValueError(f'Instance {instance_id} is already running.')
 
-    # %% starts instance and get its IP
+    # starts instance and get its IP
     iblaws.utils.ec2_start_instance(ec2, instance_id)
     public_ip = iblaws.utils.ec2_get_public_ip(ec2, instance_id)
 
-    # %% setup the security group so ONE can communicate with the Alyx database
+    # setup the security group so ONE can communicate with the Alyx database
     logger.info(f'Public IP: {public_ip}, ssh command: ssh -i {PRIVATE_KEY_PATH.as_posix()} {USERNAME}@{public_ip}')
     ec2_london = iblaws.utils.get_service_client(service_name='ec2', region_name='eu-west-2')
     iblaws.utils.ec2_update_security_group_rule(
         ec2_london, security_group_id=alyx_security_group_id, security_group_rule=alyx_security_group_rule, new_ip=f'{public_ip}/32'
     )
 
-    # %% get the SSH client and mount the EBS volume
+    # get the SSH client and mount the EBS volume
     ssh = iblaws.utils.ec2_get_ssh_client(public_ip, PRIVATE_KEY_PATH, username=USERNAME)
     logger.info('Mounting EBS volume...')
     # the device name listed in the attachment of the EBS volume doesn't match the device name in the /dev/ directory
@@ -77,21 +73,18 @@ def run_sorting_command(instance_id: str, pid: str) -> None:
     response = ssm.send_command(
         InstanceIds=[instance_id],  # replace with your instance ID
         DocumentName='AWS-RunShellScript',
-        Parameters={'commands': [command]},
+        Parameters={
+            'commands': [command],
+            'executionTimeout': ['36000'],
+        },
         TimeoutSeconds=3600 * 10,  # we give the spike sorting 10 hours to complete
-        Tags=[
-            {
-                'Key': 'pid',
-                'Value': pid
-            },
-        ]
+        Comment=pid
     )
     # Get the command ID
     command_id = response['Command']['CommandId']
     return command_id
 
 
-# %%
 def create_instance(volume_id='AWS'):
     response = ec2.run_instances(
         ImageId=ami_id,
@@ -134,8 +127,10 @@ def create_instance(volume_id='AWS'):
     return instance_id
 
 
-instance_id = 'i-03bfa41b8256dc10f' # create_instance()
-response = ec2.describe_instances(InstanceIds=[instance_id])
+# %%
+instance_id = 'i-05c9c8e9cca199cc7'
+volume_id = 'vol-0a30864212c68a728'  # $0.08/GB-month = $0.11 / TB / hour
+public_ip = start_and_prepare_instance(instance_id, volume_id)
 
 command_id = run_sorting_command(instance_id, pid='b1f22344-6bbc-4540-a4fa-d5e00f9b5857')
 
