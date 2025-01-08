@@ -36,8 +36,8 @@ def start_and_prepare_instance(instance_id: str, volume_id: str = 'AWS') -> str:
     # setup the security group so ONE can communicate with the Alyx database
     response = ec2.describe_instances(InstanceIds=[instance_id])
     instance_state = response['Reservations'][0]['Instances'][0]['State']['Name']
-    if instance_state != 'stopped':
-        raise ValueError(f'Instance {instance_id} is not in stopped state but in {instance_state} state')
+    # if instance_state != 'stopped':
+    #     raise ValueError(f'Instance {instance_id} is not in stopped state but in {instance_state} state')
 
     # starts instance and get its IP
     iblaws.utils.ec2_start_instance(ec2, instance_id)
@@ -47,9 +47,11 @@ def start_and_prepare_instance(instance_id: str, volume_id: str = 'AWS') -> str:
     logger.info(f'Public IP: {public_ip}, ssh command: ssh -i {PRIVATE_KEY_PATH.as_posix()} {USERNAME}@{public_ip}')
     ec2_london = iblaws.utils.get_service_client(service_name='ec2', region_name='eu-west-2')
     iblaws.utils.ec2_update_security_group_rule(
-        ec2_london, security_group_id=ALYX_SECURITY_GROUP_ID, security_group_rule=alyx_security_group_rule, new_ip=f'{public_ip}/32'
+        ec2_london,
+        security_group_id=ALYX_SECURITY_GROUP_ID,
+        description=instance_id,
+        cidrip=f'{public_ip}/32'
     )
-
     # get the SSH client and mount the EBS volume
     ssh = iblaws.utils.ec2_get_ssh_client(public_ip, PRIVATE_KEY_PATH, username=USERNAME)
     logger.info('Mounting EBS volume...')
@@ -129,7 +131,7 @@ def create_instance(volume_id='AWS'):
     # setup the security group so ONE can communicate with the Alyx database
     logger.info(f'Public IP: {public_ip}, ssh command: ssh -i {PRIVATE_KEY_PATH.as_posix()} {USERNAME}@{public_ip}')
     ec2_london = iblaws.utils.get_service_client(service_name='ec2', region_name='eu-west-2')
-    iblaws.utils.ec2_create_security_group_rule(
+    iblaws.utils.ec2_update_security_group_rule(
         ec2_london,
         security_group_id=ALYX_SECURITY_GROUP_ID,
         description=instance_id,
@@ -149,16 +151,16 @@ def create_instance(volume_id='AWS'):
 
 
 # %%
-instance_id = 'i-05c9c8e9cca199cc7'  # g4
-volume_id = 'vol-0a30864212c68a728'  # $0.08/GB-month = $0.11 / TB / hour
-public_ip = start_and_prepare_instance(instance_id, volume_id)
-
-command_id = run_sorting_command(instance_id, pid='b1f22344-6bbc-4540-a4fa-d5e00f9b5857')
-
-response = ssm.get_command_invocation(
-    CommandId=command_id,
-    InstanceId=instance_id,
-)
+# instance_id = 'i-05c9c8e9cca199cc7'  # g4
+# volume_id = 'vol-0a30864212c68a728'  # $0.08/GB-month = $0.11 / TB / hour
+# public_ip = start_and_prepare_instance(instance_id, volume_id)
+#
+# command_id = run_sorting_command(instance_id, pid='b1f22344-6bbc-4540-a4fa-d5e00f9b5857')
+#
+# response = ssm.get_command_invocation(
+#     CommandId=command_id,
+#     InstanceId=instance_id,
+# )
 # TODO have an option to leave the instance running as stopping is slow
 # TODO clean up security groups
 # https://us-east-1.console.aws.amazon.com/systems-manager/run-command/executing-commands?region=us-east-1
@@ -166,14 +168,8 @@ response = ssm.get_command_invocation(
 # %%
 #instance_id = create_instance()
 instance_id = 'i-012bf17257acd3f96'  # g6
-# TODO need to get the security group rule ID for the instance
 public_ip = start_and_prepare_instance(instance_id, volume_id='AWS')
 command_id = run_sorting_command(instance_id, pid='6caafb93-ccbb-4f3d-b339-b262120e9d26')
-
-ec2_london = iblaws.utils.get_service_client(service_name='ec2', region_name='eu-west-2')
-
-# response = ec2_london.describe_security_groups(GroupIds=[ALYX_SECURITY_GROUP_ID])
-# iblaws.utils.ec2_update_security_group_rule(ec2_london, ALYX_SECURITY_GROUP_ID, 'sgr-006773ff88163e74b', public_ip + '/32')
 
 
 
@@ -201,3 +197,6 @@ commands = ssm.list_commands(
             'value': 'Executing',
         }
 ])['Commands']
+
+
+# %%

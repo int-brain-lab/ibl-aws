@@ -25,66 +25,41 @@ def get_service_client(service_name: str = 'ec2', region_name: Optional[str] = N
     )
 
 
-def ec2_create_security_group_rule(ec2_client, security_group_id: str, description: str, ip: str):
+def ec2_update_security_group_rule(ec2_client, security_group_id: str, description: str, cidrip: str):
     """
-    Adds an ingress rule to the specified security group.
+    Updates or creates an ingress rule to a security group.
 
-    Args:
-        ec2_client (boto3.client): EC2 client
-        security_group_id (str): ID of the security group
-        description (str): Description of the rule
-        ip (str): IP address range to authorize
+    :param ec2_client:
+    :param security_group_id:
+    :param description:
+    :param cidr: 122.13.123.23/32
+    :return:
     """
+    response = ec2_client.describe_security_groups(GroupIds=[security_group_id])
+    sg = response['SecurityGroups'][0]
+    revoke_pip = None
+
+    for pip in sg['IpPermissions']:
+        for ir in pip['IpRanges']:
+            if ir['Description'] == description:
+                _logger.info(f"revoking: {ir['Description']},  {ir['CidrIp']}")
+                revoke_pip = pip.copy()
+                revoke_pip['IpRanges'] = [ir]
+                ec2_client.revoke_security_group_ingress(GroupId=security_group_id, IpPermissions=[revoke_pip])
+                revoke_pip['IpRanges'][0]['CidrIp'] = cidrip
+
     ec2_client.authorize_security_group_ingress(
         GroupId=security_group_id,
-        IpPermissions=[
-            {
-                'IpProtocol': 'tcp',
-                'FromPort': 443,
-                'ToPort': 443,
-                'IpRanges': [{
-                    'CidrIp': f'{ip}/32',
-                    'Description': description,
-                }],
-            },
-        ],
-    )
-    _logger.info(f'Security group rule added successfully with IP {ip} in group {security_group_id}.')
-
-
-def ec2_update_security_group_rule(ec2_client, security_group_id, security_group_rule, new_ip):
-    # Describe the security group to get current rules
-    response = ec2_client.describe_security_group_rules(
-        Filters=[
-            {'Name': 'group-id', 'Values': [security_group_id]},
-            {'Name': 'security-group-rule-id', 'Values': [security_group_rule]},
-        ]
+        IpPermissions=[(revoke_pip or {'IpProtocol': 'all',
+                                                  'IpRanges': [{'CidrIp': cidrip, 'Description': description}], })]
     )
 
-    if not response['SecurityGroupRules']:
-        raise ValueError(f'No rule found with ID {security_group_rule} in security group {security_group_id}')
-
-    rule = response['SecurityGroupRules'][0]
-
-    # Update the rule with the new IP
-    ec2_client.modify_security_group_rules(
-        GroupId=security_group_id,
-        SecurityGroupRules=[
-            {
-                'SecurityGroupRuleId': security_group_rule,
-                'SecurityGroupRule': {
-                    'IpProtocol': rule['IpProtocol'],
-                    'FromPort': rule['FromPort'],
-                    'ToPort': rule['ToPort'],
-                    'CidrIpv4': new_ip,
-                    'Description': rule.get('Description', ''),
-                },
-            }
-        ],
-    )
-    _logger.info(
-        f'Security group rule {security_group_rule} in group {security_group_id} updated successfully with new IP {new_ip}.'
-    )
+    response = ec2_client.describe_security_groups(GroupIds=[security_group_id])
+    sg = response['SecurityGroups'][0]
+    for pip in sg['IpPermissions']:
+        for ir in pip['IpRanges']:
+            if ir['Description'] == description:
+                _logger.info(f"updated: {ir['Description']},  {ir['CidrIp']}")
 
 
 def ec2_get_ssh_client(host_ip, key_pair_path, username='ubuntu') -> paramiko.SSHClient:
