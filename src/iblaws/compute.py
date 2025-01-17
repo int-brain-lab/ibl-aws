@@ -11,7 +11,6 @@ USERNAME = 'ubuntu'
 
 # security group that allows ONE to connect to Alyx
 ALYX_SECURITY_GROUP_ID = 'sg-0ec7c3c71eba340dd'
-ami_id = 'ami-0aee4157817bb44f8'
 
 
 class InstanceManager:
@@ -107,7 +106,7 @@ class InstanceManager:
         return command_id
 
     @staticmethod
-    def create_instance(self, ami_id: str, instance_type: str, instance_region: str, volume_id: str = 'AWS') -> str:
+    def create_instance(self, ami_id: str, instance_type: str, instance_region: str, volume_id: str = 'AWS'):
         ec2 = iblaws.utils.get_service_client(service_name='ec2', region_name=instance_region)
         response = ec2.run_instances(
             ImageId=ami_id,
@@ -158,4 +157,4 @@ class InstanceManager:
             ip=public_ip
         )
 
-        return instance_id
+        return InstanceManager(instance_id, instance_region, volume_id)
