@@ -1,4 +1,3 @@
-from pathlib import Path
 import time
 
 import iblutil.util
@@ -20,9 +19,7 @@ instance_id = 'i-012bf17257acd3f96'  # g6
 # volume_id = 'vol-0a30864212c68a728'  # $0.08/GB-month = $0.11 / TB / hour
 
 im = iblaws.compute.InstanceManager.create_instance(
-    ami_id='ami-0aee4157817bb44f8',
-    instance_type='g6.4xlarge',
-    instance_region='us-east-1'
+    ami_id='ami-0aee4157817bb44f8', instance_type='g6.4xlarge', instance_region='us-east-1'
 )
 
 im = iblaws.compute.InstanceManager(instance_id=instance_id, instance_region='us-east-1')
@@ -45,7 +42,9 @@ for pid in pids:
     while True:
         time.sleep(600)
         if command_id is None:
-            command = next((c for c in ssm.list_commands(InstanceId=instance_id, MaxResults=10)['Commands'] if c['Comment'] == pid))
+            command = next(
+                (c for c in ssm.list_commands(InstanceId=instance_id, MaxResults=10)['Commands'] if c['Comment'] == pid)
+            )
         else:
             command = ssm.get_command_invocation(CommandId=command_id, InstanceId=instance_id)
         match command['Status']:
@@ -53,10 +52,10 @@ for pid in pids:
                 logger.critical(f'Command for pid {pid} completed successfully')
                 break
             case 'InProgress':
-                logger.info(f'Command for pid {pid} status: {command['Status']}')
+                logger.info(f'Command for pid {pid} status: {command["Status"]}')
                 continue
             case _:
-                logger.error(f'Command for pid {pid} status: {command['Status']}')
+                logger.error(f'Command for pid {pid} status: {command["Status"]}')
                 raise ValueError(f' Weird command status: {command["Status"]}')
 
 # %%
