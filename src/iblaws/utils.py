@@ -97,7 +97,7 @@ def ec2_update_managed_prefix_list_item(ec2_client, managed_prefix_list_id: str,
     existing_entries = ec2_client.get_managed_prefix_list_entries(PrefixListId=managed_prefix_list_id).get('Entries')
 
     # remove existing entries that match the given description
-    remove_entries = [{'Cidr': x['Cidr']} for x in existing_entries if x['Description'] == description]
+    remove_entries = [x for x in existing_entries if x['Description'] == description]
     if len(remove_entries) > 0:
         for entry in remove_entries:
             _logger.info(f'removing: {entry["Description"]},  {entry["Cidr"]}')
@@ -105,7 +105,7 @@ def ec2_update_managed_prefix_list_item(ec2_client, managed_prefix_list_id: str,
             DryRun=False,
             PrefixListId=managed_prefix_list_id,
             CurrentVersion=list_description['Version'],
-            RemoveEntries=remove_entries,
+            RemoveEntries=[{'Cidr': rm['Cidr']} for rm in remove_entries],
         )
         list_version += 1
 
