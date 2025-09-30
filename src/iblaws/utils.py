@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 import time
 from typing import Optional
+from difflib import get_close_matches
 
 from pydantic import validate_call, IPvAnyInterface
 
@@ -72,6 +73,121 @@ def ec2_update_security_group_rule(ec2_client, security_group_id: str, descripti
                 _logger.info(f'updated: {ir["Description"]},  {ir["CidrIp"]}')
 
 
+def ec2_get_managed_prefix_list_version(ec2_client, managed_prefix_list_id: str) -> int:
+    """
+    Get the version of a managed prefix list in AWS EC2.
+
+    Parameters
+    ----------
+    ec2_client : boto3.client
+        The Boto3 EC2 client used to interact with the AWS EC2 service.
+
+    managed_prefix_list_id : str
+        The ID of the managed prefix list.
+
+    Returns
+    -------
+    int
+        The version of the managed prefix list.
+    """
+    list_description = ec2_client.describe_managed_prefix_lists(PrefixListIds=[managed_prefix_list_id]).get('PrefixLists')[0]
+    return list_description.get('Version')
+
+
+@validate_call
+def ec2_add_managed_prefix_list_item(ec2_client, managed_prefix_list_id: str, description: str, cidrip: IPvAnyInterface):
+    """
+    Add a new entry to a managed prefix list in AWS EC2.
+
+    Parameters
+    ----------
+    ec2_client : boto3.client
+        The Boto3 EC2 client used to interact with the AWS EC2 service.
+
+    managed_prefix_list_id : str
+        The ID of the managed prefix list.
+
+    description : str
+        The description associated with the CIDR entry to be added.
+
+    cidrip : str
+        The CIDR block to be added to the managed prefix list.
+    """
+    list_version = ec2_get_managed_prefix_list_version(ec2_client, managed_prefix_list_id)
+    existing_entries = ec2_client.get_managed_prefix_list_entries(PrefixListId=managed_prefix_list_id).get('Entries')
+    existing_descriptions = [x['Description'] for x in existing_entries]
+
+    # check if the entry already exists
+    if description in existing_descriptions:
+        raise ValueError(f'The description "{description}" already exists. Please choose a different description.')
+
+    # add entry
+    ec2_client.modify_managed_prefix_list(
+        DryRun=False,
+        PrefixListId=managed_prefix_list_id,
+        CurrentVersion=list_version,
+        AddEntries=[{'Cidr': str(cidrip), 'Description': description}],
+    )
+
+    # wait for list version to be updated
+    while list_version == ec2_get_managed_prefix_list_version(ec2_client, managed_prefix_list_id):
+        time.sleep(0.2)
+    _logger.info(f'added: {description},  {cidrip}')
+
+
+@validate_call
+def ec2_remove_managed_prefix_list_item(ec2_client, managed_prefix_list_id: str, description: str, ignore_errors: bool = False):
+    """
+    Remove an entry from a managed prefix list in AWS EC2.
+
+    Parameters
+    ----------
+    ec2_client : boto3.client
+        The Boto3 EC2 client used to interact with the AWS EC2 service.
+
+    managed_prefix_list_id : str
+        The ID of the managed prefix list.
+
+    description : str
+        The description associated with the CIDR entry to be removed.
+    """
+    list_version = list_version = ec2_get_managed_prefix_list_version(ec2_client, managed_prefix_list_id)
+    existing_entries = ec2_client.get_managed_prefix_list_entries(PrefixListId=managed_prefix_list_id).get('Entries')
+    existing_descriptions = [x['Description'] for x in existing_entries]
+
+    if description not in existing_descriptions:
+        if ignore_errors:
+            return
+
+        close_matches = get_close_matches(description, existing_descriptions, n=5, cutoff=0.6)
+        if len(close_matches) == 1:
+            suggestion = f' Did you mean "{close_matches[0]}"?'
+        elif len(close_matches) > 1:
+            suggestion = f' Did you mean one of these: ' + ", ".join([f'"{m}"' for m in close_matches]) + '?'
+        else:
+            suggestion = ''
+
+        raise ValueError(
+            f'The description "{description}" was not found in the existing entries.' + suggestion
+        )
+
+    remove_entries = [x for x in existing_entries if x['Description'] == description]
+    if len(remove_entries) > 0:
+        for entry in remove_entries:
+            _logger.info(f'removing: {entry["Description"]},  {entry["Cidr"]}')
+        ec2_client.modify_managed_prefix_list(
+            DryRun=False,
+            PrefixListId=managed_prefix_list_id,
+            CurrentVersion=list_version,
+            RemoveEntries=[{'Cidr': rm['Cidr']} for rm in remove_entries],
+        )
+
+    # wait for list version to be updated
+    while list_version == ec2_get_managed_prefix_list_version(ec2_client, managed_prefix_list_id):
+        time.sleep(0.2)
+    _logger.info(f'removed: {description}')
+
+
 @validate_call
 def ec2_update_managed_prefix_list_item(ec2_client, managed_prefix_list_id: str, description: str, cidrip: IPvAnyInterface):
     """
@@ -92,31 +208,8 @@ def ec2_update_managed_prefix_list_item(ec2_client, managed_prefix_list_id: str,
     cidrip : str
         The CIDR block to be added to the managed prefix list.
     """
-    list_description = ec2_client.describe_managed_prefix_lists(PrefixListIds=[managed_prefix_list_id]).get('PrefixLists')[0]
-    list_version = list_description.get('Version')
-    existing_entries = ec2_client.get_managed_prefix_list_entries(PrefixListId=managed_prefix_list_id).get('Entries')
-
-    # remove existing entries that match the given description
-    remove_entries = [x for x in existing_entries if x['Description'] == description]
-    if len(remove_entries) > 0:
-        for entry in remove_entries:
-            _logger.info(f'removing: {entry["Description"]},  {entry["Cidr"]}')
-        ec2_client.modify_managed_prefix_list(
-            DryRun=False,
-            PrefixListId=managed_prefix_list_id,
-            CurrentVersion=list_description['Version'],
-            RemoveEntries=[{'Cidr': rm['Cidr']} for rm in remove_entries],
-        )
-        list_version += 1
-
-    # add updated entry
-    ec2_client.modify_managed_prefix_list(
-        DryRun=False,
-        PrefixListId=managed_prefix_list_id,
-        CurrentVersion=list_version,
-        AddEntries=[{'Cidr': str(cidrip), 'Description': description}],
-    )
-    _logger.info(f'updated: {description},  {cidrip}')
+    ec2_remove_managed_prefix_list_item(ec2_client, managed_prefix_list_id, description)
+    ec2_add_managed_prefix_list_item(ec2_client, managed_prefix_list_id, description, cidrip)
 
 
 def ec2_get_ssh_client(host_ip, key_pair_path, username='ubuntu') -> paramiko.SSHClient:
