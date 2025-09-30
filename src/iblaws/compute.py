@@ -1,4 +1,5 @@
 import logging
+import requests
 from pathlib import Path
 
 import iblaws.utils
@@ -10,6 +11,42 @@ USERNAME = 'ubuntu'
 
 # security group that allows ONE to connect to Alyx
 ALYX_SECURITY_GROUP_ID = 'sg-0ec7c3c71eba340dd'
+HTTPS_PREFIX_LIST_ID = 'pl-0be82b42e37cbc052'
+
+
+# run before
+def _get_public_ip():
+    response = requests.get('https://api.ipify.org')
+    return response.text
+
+
+def manage_firewall_access(worker_id):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            # run before
+            description = f'Lightning AI Worker #{worker_id:02}'
+            ec2 = iblaws.utils.get_service_client(service_name='ec2', region_name='eu-west-2')
+            new_ip = f'{_get_public_ip()}/32'
+            try:
+                iblaws.utils.ec2_remove_managed_prefix_list_item(
+                    ec2, managed_prefix_list_id=HTTPS_PREFIX_LIST_ID, description=description
+                )
+            except ValueError:
+                pass
+            iblaws.utils.ec2_add_managed_prefix_list_item(
+                ec2, managed_prefix_list_id=HTTPS_PREFIX_LIST_ID, description=description, cidrip=new_ip
+            )
+            # Execute the decorated function
+            result = func(*args, **kwargs)
+            # run after
+            iblaws.utils.ec2_remove_managed_prefix_list_item(
+                ec2, managed_prefix_list_id=HTTPS_PREFIX_LIST_ID, description=description
+            )
+            return result
+
+        return wrapper
+
+    return decorator
 
 
 class InstanceManager:

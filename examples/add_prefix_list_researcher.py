@@ -14,6 +14,4 @@ iblaws.utils.ec2_update_managed_prefix_list_item(
 )
 
 # %% If the entry doesn not exist:
-iblaws.utils.ec2_add_managed_prefix_list_item(
-ec2, managed_prefix_list_id=PREFIX_LIST_ID, description=description, cidrip=new_ip
-)
+iblaws.utils.ec2_add_managed_prefix_list_item(ec2, managed_prefix_list_id=PREFIX_LIST_ID, description=description, cidrip=new_ip)
