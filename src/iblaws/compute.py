@@ -20,9 +20,13 @@ def _get_public_ip():
     return response.text
 
 
-def manage_firewall_access(worker_id):
+def manage_firewall_access(worker=0):
     def decorator(func):
         def wrapper(*args, **kwargs):
+            if 'worker_id' in kwargs:
+                worker_id = kwargs.pop('worker_id')
+            else:
+                worker_id = worker
             # run before
             description = f'Lightning AI Worker #{worker_id:02}'
             ec2 = iblaws.utils.get_service_client(service_name='ec2', region_name='eu-west-2')

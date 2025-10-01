@@ -16,7 +16,7 @@ def test_manage_firewall_access_removes_ip_after_execution(mocker):
     mock_add = mocker.patch('iblaws.utils.ec2_add_managed_prefix_list_item')
 
     # Create a test function to decorate
-    @iblaws.compute.manage_firewall_access(worker_id=42)
+    @iblaws.compute.manage_firewall_access(worker=42)
     def test_function():
         return 'result'
 
@@ -54,12 +54,12 @@ def test_manage_firewall_access_adds_ip_to_prefix_list(mocker):
     mock_add_prefix_item = mocker.patch('iblaws.utils.ec2_add_managed_prefix_list_item')
 
     # Create a test function and apply the decorator
-    @iblaws.compute.manage_firewall_access(worker_id=42)
+    @iblaws.compute.manage_firewall_access()
     def test_function():
         return 'test result'
 
     # Execute the decorated function
-    result = test_function()
+    result = test_function(worker_id=42)
 
     # Verify the decorator behavior
     mock_get_public_ip.assert_called_once()
