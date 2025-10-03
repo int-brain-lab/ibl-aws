@@ -163,13 +163,11 @@ def ec2_remove_managed_prefix_list_item(ec2_client, managed_prefix_list_id: str,
         if len(close_matches) == 1:
             suggestion = f' Did you mean "{close_matches[0]}"?'
         elif len(close_matches) > 1:
-            suggestion = f' Did you mean one of these: ' + ", ".join([f'"{m}"' for m in close_matches]) + '?'
+            suggestion = f' Did you mean one of these: ' + ', '.join([f'"{m}"' for m in close_matches]) + '?'
         else:
             suggestion = ''
 
-        raise ValueError(
-            f'The description "{description}" was not found in the existing entries.' + suggestion
-        )
+        raise ValueError(f'The description "{description}" was not found in the existing entries.' + suggestion)
 
     remove_entries = [x for x in existing_entries if x['Description'] == description]
     if len(remove_entries) > 0:

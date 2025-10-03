@@ -2,9 +2,11 @@ from pathlib import Path
 import iblaws.utils
 import requests
 
+
 def get_public_ip():
     response = requests.get('https://api.ipify.org')
     return response.text
+
 
 PREFIX_LIST_ID = 'pl-05d04791174282256'
 description = 'Olivier (mobile)'
