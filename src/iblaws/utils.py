@@ -229,6 +229,15 @@ def ec2_get_public_ip(ec2_client, instance_id):
     return response['Reservations'][0]['Instances'][0]['PublicIpAddress']
 
 
+def ec2_stop_instance(ec2_client, instance_id):
+    # %% stops the instance if it is running
+    _logger.info(f'Stopping EC2 instance {instance_id}...')
+    ec2_client.stop_instances(InstanceIds=[instance_id])
+    waiter = ec2_client.get_waiter('instance_stopped')
+    waiter.wait(InstanceIds=[instance_id])
+    _logger.info(f'EC2 instance {instance_id} is now stopped')
+
+
 def ec2_start_instance(ec2_client, instance_id):
     # %% starts the instance if it is not already running
     _logger.info(f'Starting EC2 instance {instance_id}...')
