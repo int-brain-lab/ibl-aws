@@ -1,6 +1,5 @@
 from pathlib import Path
 from itertools import filterfalse
-import os
 
 from one.api import OneAlyx
 from one.alf.spec import is_uuid_string
@@ -15,7 +14,6 @@ LIGHTNING_AI_PATCH_PATH = Path('/teamspace/studios/this_studio/data')
 
 
 class OneLightningAI(OneAlyx):
-
     def __init__(self, *args, cache_dir=S3_MOUNT_DATA_PATH, cache_rest=CACHE_REST, **kwargs):
         if not kwargs.get('tables_dir'):
             # Ensure parquet tables downloaded to separate location to the dataset repo
@@ -42,7 +40,6 @@ class OneLightningAI(OneAlyx):
 
 
 class LightningAIDataHandler(SDSCDataHandler):
-
     def __init__(self, session_path, signatures, one=None):
         super().__init__(session_path, signatures, one=one)
         self.patch_path = Path(LIGHTNING_AI_PATCH_PATH)
@@ -61,8 +58,7 @@ class LightningAIDataHandler(SDSCDataHandler):
         """
         versions = super().uploadData(outputs, version)
         s3_patcher = S3Patcher(one=self.one)
-        return s3_patcher.patch_dataset(
-            outputs, created_by=self.one.alyx.user, versions=versions, **kwargs)
+        return s3_patcher.patch_dataset(outputs, created_by=self.one.alyx.user, versions=versions, **kwargs)
 
 
 def _test_one_sdsc():
@@ -71,8 +67,9 @@ def _test_one_sdsc():
     :return:
     """
     from brainbox.io.one import SpikeSortingLoader, SessionLoader
+
     one = OneLightningAI()
-    pid = "069c2674-80b0-44b4-a3d9-28337512967f"
+    pid = '069c2674-80b0-44b4-a3d9-28337512967f'
     eid, _ = one.pid2eid(pid)
     dsets = one.list_datasets(eid=eid)
     assert len(dsets) > 0

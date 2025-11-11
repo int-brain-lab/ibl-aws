@@ -1,5 +1,4 @@
 # %%
-from pathlib import Path
 import iblaws.utils
 
 description = 'Charline Tessereau (Mainen)'  # Name Surname Lab
