@@ -20,7 +20,7 @@ class OneLightningAI(OneAlyx):
         if not kwargs.get('tables_dir'):
             # Ensure parquet tables downloaded to separate location to the dataset repo
             kwargs['tables_dir'] = oneparams.get_cache_dir()  # by default this is user downloads
-        super().__init__(*args, cache_dir=cache_dir, cache_rest=cache_rest, **kwargs)
+        super().__init__(*args, cache_dir=cache_dir, cache_rest=str(cache_rest), **kwargs)
         # assign property here as it is set by the parent OneAlyx class at init
         self.uuid_filenames = True
 
@@ -61,5 +61,28 @@ class LightningAIDataHandler(SDSCDataHandler):
         """
         versions = super().uploadData(outputs, version)
         s3_patcher = S3Patcher(one=self.one)
-        return s3_patcher.patch_dataset(outputs, created_by=self.one.alyx.user,
-                                        versions=versions, **kwargs)
+        return s3_patcher.patch_dataset(
+            outputs, created_by=self.one.alyx.user, versions=versions, **kwargs)
+
+
+def _test_one_sdsc():
+    """
+    I have put the tests here
+    :return:
+    """
+    from brainbox.io.one import SpikeSortingLoader, SessionLoader
+    one = OneLightningAI()
+    pid = "069c2674-80b0-44b4-a3d9-28337512967f"
+    eid, _ = one.pid2eid(pid)
+    dsets = one.list_datasets(eid=eid)
+    assert len(dsets) > 0
+    # checks that this is indeed the short key version when using load object
+    trials = one.load_object(eid, obj='trials')
+    assert 'intervals' in trials
+    # checks that this is indeed the short key version when using the session loader and spike sorting loader
+    sl = SessionLoader(eid=eid, one=one)  # noqa
+    sl.load_wheel()
+    assert 'position' in sl.wheel.columns
+    ssl = SpikeSortingLoader(pid=pid, one=one)
+    channels = ssl.load_channels()
+    assert channels['x'].size == 384
