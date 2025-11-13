@@ -22,7 +22,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     pid = args.pid
 
-    one = ONE(cache_dir=ONE_CACHE_DIR, mode='remote')
+    one = ONE(cache_dir=ONE_CACHE_DIR, mode='remote', base_url='https://alyx.internationalbrainlab.org')
     eid, pname = one.pid2eid(pid)
     session_path = one.eid2path(eid)
     lab = session_path.parts[-5]
