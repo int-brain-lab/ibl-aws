@@ -10,9 +10,10 @@ from pathlib import Path
 from one.api import ONE
 from ibllib.pipes.ephys_tasks import SpikeSorting
 
-SCRATCH_DIR = Path('/home/zeus').joinpath('scratch', 'iblsorter')
+SCRATCH_DIR = Path('/tmp/iblsorter')
+ONE_CACHE_DIR = Path('/tmp/ONE')
 SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
-ONE_CACHE_DIR = Path('/home/zeus').joinpath('scratch', 'ONE', 'alyx.internationalbrainlab.org')
+
 
 if __name__ == "__main__":
     # parse arguments with argparse, the first is the eid, the second is the probe name

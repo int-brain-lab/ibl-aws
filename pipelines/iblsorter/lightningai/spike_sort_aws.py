@@ -2,9 +2,7 @@
 python spike_sort.py bcb1dac7-6d2b-47ad-bbbe-a4aaf9774481
 """
 
-from pathlib import Path
 import argparse
-
 from pathlib import Path
 
 # NB: ibllightning is found in the ibl-aws package https://github.com/int-brain-lab/ibl-aws
@@ -12,8 +10,9 @@ from ibllightning import OneLightningAI as ONE
 from ibllightning import LightningAIDataHandler
 from ibllib.pipes.ephys_tasks import SpikeSorting
 
-SCRATCH_DIR = Path('/home/zeus').joinpath('scratch', 'iblsorter')
+SCRATCH_DIR = Path('/tmp/iblsorter')
 SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
+
 
 if __name__ == "__main__":
     # parse arguments with argparse, the first is the eid, the second is the probe name
