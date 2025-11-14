@@ -1,5 +1,4 @@
 import iblaws.compute
-import pytest
 
 
 def test_manage_firewall_access_removes_ip_after_execution(mocker):

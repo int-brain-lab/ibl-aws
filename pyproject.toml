@@ -10,6 +10,7 @@ dependencies = [
     "python-dotenv",
     "paramiko",
     "iblutil",
+    "lightning_sdk",
     "pydantic",
     "pytest",
     "pytest-mock",
