@@ -5,7 +5,7 @@ from one.api import OneAlyx
 from one.alf.spec import is_uuid_string
 import one.params as oneparams
 
-from ibllib.oneibl.data_handlers import SDSCDataHandler
+from ibllib.oneibl.data_handlers import SDSCDataHandler, DataHandler
 from ibllib.oneibl.patcher import S3Patcher
 
 S3_MOUNT_DATA_PATH = Path('/teamspace/s3_connections/ibl-brain-wide-map-private/data')
@@ -56,7 +56,7 @@ class LightningAIDataHandler(SDSCDataHandler):
         :param version: ibllib version
         :return: output info of registered datasets
         """
-        versions = super().uploadData(outputs, version)
+        versions = DataHandler.uploadData(self, outputs, version)
         s3_patcher = S3Patcher(one=self.one)
         return s3_patcher.patch_dataset(outputs, created_by=self.one.alyx.user, versions=versions, **kwargs)
 
