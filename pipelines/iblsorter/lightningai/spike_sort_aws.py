@@ -11,15 +11,19 @@ from ibllightning import LightningAIDataHandler
 from ibllib.pipes.ephys_tasks import SpikeSorting
 
 SCRATCH_DIR = Path('/tmp/iblsorter')
-SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
 
 
 if __name__ == "__main__":
     # parse arguments with argparse, the first is the eid, the second is the probe name
     parser = argparse.ArgumentParser(description='Run spike sorting on a session')
     parser.add_argument('pid', help='The probe ID')
+    parser.add_argument('--scratch-dir', type=Path, default=SCRATCH_DIR,
+                        help=f'Scratch directory for temporary files (default: {SCRATCH_DIR})')
+
     args = parser.parse_args()
     pid = args.pid
+    scratch_dir = Path(args.scratch_dir)
+    scratch_dir.mkdir(parents=True, exist_ok=True)
 
     one = ONE()
     eid, pname = one.pid2eid(pid)
