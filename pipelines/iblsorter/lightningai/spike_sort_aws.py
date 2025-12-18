@@ -30,12 +30,13 @@ if __name__ == "__main__":
     session_path = one.eid2path(eid)
     lab = session_path.parts[-5]
 
-    print(eid, pname)
-    print(session_path)
+    print('eid: ', eid, 'pname: ', pname)
+    print('session_path: ', session_path)
+    print('scratch_dir: ', scratch_dir)
 
     session_path = one.eid2path(eid)
     # assert session_path.exists(), f"Session path {session_path} does not exist - exiting..."
     ssjob = SpikeSorting(session_path, one=one, pname=pname, device_collection='raw_ephys_data', location='Popeye',
-                         data_handler_class=LightningAIDataHandler, on_error='raise', scratch_folder=SCRATCH_DIR)
+                         data_handler_class=LightningAIDataHandler, on_error='raise', scratch_folder=scratch_dir)
     ssjob.run()
     ssjob.register_datasets(labs=lab, force=True)
