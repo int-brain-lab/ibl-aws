@@ -3,7 +3,7 @@ import requests
 from pathlib import Path
 
 import iblaws.utils
-
+import datetime
 
 _logger = logging.getLogger(__name__)
 PRIVATE_KEY_PATH = Path.home().joinpath('.ssh', 'spikesorting_rerun.pem')
@@ -28,7 +28,7 @@ def manage_firewall_access(worker=0):
             else:
                 worker_id = worker
             # run before
-            description = f'Lightning AI Worker #{worker_id:02}'
+            description = f'LAI Worker #{worker_id:02} {datetime.date.today().isoformat()}'
             ec2 = iblaws.utils.get_service_client(service_name='ec2', region_name='eu-west-2')
             new_ip = f'{_get_public_ip()}/32'
             try:
