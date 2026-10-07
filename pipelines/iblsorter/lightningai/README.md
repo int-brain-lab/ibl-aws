@@ -29,7 +29,7 @@ machine, cloud_provider = (Machine.L4, CloudProvider.GCP)
 studio_name = 'iblsorter' if cloud_provider == CloudProvider.AWS else 'iblsorter-gcp'
 script = f'spike_sort_{str(cloud_provider).lower()}.py'
 
-s = Studio(name=studio_name, org='IBL', teamspace=TEAMSPACE, cloud_provider=cloud_provider)
+s = Studio(name=studio_name, org='IBL', teamspace=TEAMSPACE, cloud=cloud_provider, create_ok=False)
 assert str(cloud_provider).lower() in s.cloud_account  # sanity-check the cloud account matches
 ```
 
@@ -49,6 +49,20 @@ for pid in pids:
            f'pipelines/iblsorter/lightningai/{script} {pid}')
     s.run_job(command=cmd, machine=machine, name=pid, reuse_snapshot=False)
     time.sleep(60)
+```
+
+## Keeping the outputs if the registration fails
+
+Once the sorting has run, `spike_sort_aws.py` and `spike_sort_gcp.py` copy the files to be registered (`ssjob.outputs`: the alf files and
+the sorter output tar) to `/teamspace/studios/this_studio/artifacts/<pid>` (`--artifacts-dir`), keeping their path
+relative to the session, before calling `register_datasets`. In a studio job, files written under `this_studio/` are
+kept on the teamspace drive under `jobs/<job-name>/`. Nothing from the scratch folder is kept.
+To recover the artifacts from a local computer:
+
+```python
+from lightning_sdk import Job, Teamspace
+job = Job(name=pid, teamspace=Teamspace(name=TEAMSPACE, org='IBL'))
+job.download_artifacts(target_dir=f'./recovered/{pid}', path=f'artifacts/{pid}')
 ```
 
 To check job statuses and clean up completed jobs:
