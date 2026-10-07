@@ -206,7 +206,7 @@ def ec2_update_managed_prefix_list_item(ec2_client, managed_prefix_list_id: str,
     cidrip : str
         The CIDR block to be added to the managed prefix list.
     """
-    ec2_remove_managed_prefix_list_item(ec2_client, managed_prefix_list_id, description)
+    ec2_remove_managed_prefix_list_item(ec2_client, managed_prefix_list_id, description, ignore_errors=True)
     ec2_add_managed_prefix_list_item(ec2_client, managed_prefix_list_id, description, cidrip)
 
 
