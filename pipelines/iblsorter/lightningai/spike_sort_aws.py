@@ -23,7 +23,7 @@ from ibllib.pipes.ephys_tasks import SpikeSorting
 
 SCRATCH_DIR = Path('/tmp/iblsorter')
 ARTIFACTS_DIR = Path('/teamspace/studios/this_studio/artifacts')
-SORTER_LOG = f'_ibl_log.info_{SpikeSorting.SPIKE_SORTER_NAME}.log'
+SORTER_LOG = f'_ibl_log.info_{SpikeSorting._sortername}.log'
 
 
 class CheckpointedSpikeSorting(SpikeSorting):
