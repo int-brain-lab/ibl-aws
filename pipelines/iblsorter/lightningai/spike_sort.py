@@ -25,6 +25,8 @@ import stat
 from pathlib import Path
 
 from ibllib.pipes.ephys_tasks import SpikeSorting
+from one.alf.exceptions import ALFInvalid
+from one.alf.path import full_path_parts
 
 SCRATCH_DIR = Path('/tmp/iblsorter')
 ARTIFACTS_DIR = Path('/teamspace/studios/this_studio/artifacts')
@@ -103,6 +105,21 @@ def signature_outputs(task, root):
     return complete, sorted(set(files))
 
 
+def registrable(files):
+    """
+    Keep the files that can be registered: valid ALF paths. The task signature also lists files that a normal run does
+    not register, e.g. iblsorter_parameters.yaml, which the registration rejects as an invalid ALF path.
+    """
+    keep = []
+    for file in files:
+        try:
+            full_path_parts(file)
+            keep.append(file)
+        except ALFInvalid:
+            print(f'Not registered, not a valid ALF path: {file}')
+    return keep
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Run spike sorting on a probe insertion')
     parser.add_argument('pid', help='The probe ID')
@@ -151,7 +168,7 @@ def run(args, one, **task_kwargs):
             print(f'Restoring the {len(files)} output files from {saved_dir}: the task is not run')
             restore(saved_dir, session_path, files=files)
             ssjob.data_handler = ssjob.get_data_handler()
-            ssjob.outputs = [session_path.joinpath(f) for f in files]
+            ssjob.outputs = registrable(session_path.joinpath(f) for f in files)
             ssjob.register_datasets(labs=lab, force=True)
             return
         # 2. the previous job saved the sorter output: restore it, ibllib then skips the sorter
